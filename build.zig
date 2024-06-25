@@ -44,7 +44,9 @@ pub fn build(b: *std.Build) !void {
         .riscv32, .riscv64 => !t.isGnuLibC(),
         else => true,
     }) {
-        lib.linkLibrary(ffi_dep.artifact("ffi"));
+        const bffiLib = ffi_dep.artifact("ffi");
+        lib.linkLibrary(bffiLib);
+        ffiModule.addIncludePath(bffiLib.getEmittedIncludeTree());
         ffiSupported = true;
     } else {
         if (!safe_build) @panic("This device doesn't support ffi");
