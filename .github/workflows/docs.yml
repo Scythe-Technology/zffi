@@ -30,6 +30,9 @@ jobs:
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
+      - name: Build docs
+        run: zig build docs
+
       - name: Archive artifact
         shell: sh
         run: |
