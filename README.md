@@ -5,6 +5,8 @@
 Zig bindings for [libffi](https://github.com/libffi/libffi)
 
 ## Installation
-TODO
+```
+zig fetch --save https://github.com/Scythe-Technology/zig-ffi/archive/refs/tags/v0.0.1.tar.gz
+```
 ## Documentation
-TODO
+[GitHub Pages](https://scythe-technology.github.io/zig-ffi/)
