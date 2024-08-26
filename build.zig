@@ -18,10 +18,10 @@ pub fn build(b: *std.Build) !void {
     });
 
     const lib = b.addStaticLibrary(.{
-        .name = "zig-ffi",
+        .name = "zffi",
         .target = target,
         .optimize = optimize,
-        .version = std.SemanticVersion{ .major = 3, .minor = 4, .patch = 6 },
+        .version = std.SemanticVersion{ .major = 0, .minor = 0, .patch = 1 },
     });
 
     lib.linkLibCpp();
