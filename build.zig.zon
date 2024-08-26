@@ -1,7 +1,7 @@
 .{
-    .name = "zig-libffi",
+    .name = "zffi",
     .version = "0.0.1",
-    //.minimum_zig_version = "0.11.0",
+    .minimum_zig_version = "0.13.0",
     .dependencies = .{
         .libffi = .{
             .url = "https://github.com/alexrp/libffi/archive/be74524b614693f612fa0c3951d08bb70f4bb4ea.tar.gz",
