@@ -105,7 +105,7 @@ pub const Struct = struct {
     }
 };
 
-const GenType = union(enum) {
+pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
 };
@@ -132,7 +132,7 @@ pub const CallableFunction = struct {
         @panic("FFI is unsupported on this platform");
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *const anyopaque) !usize {
+    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) !usize {
         _ = self;
         _ = callArgs;
         @panic("FFI is unsupported on this platform");

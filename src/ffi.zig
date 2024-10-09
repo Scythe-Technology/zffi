@@ -150,7 +150,7 @@ pub const Struct = struct {
     }
 };
 
-const GenType = union(enum) {
+pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
 };
@@ -229,7 +229,7 @@ pub const CallableFunction = struct {
         };
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *const anyopaque) !usize {
+    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) !usize {
         if (callArgs.len != self.argTypes.len - 1) return PrepError.BadArgumentType;
         var retValue: usize = undefined;
         clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @ptrCast(self.fnPtr)), &retValue, @constCast(@ptrCast(callArgs.ptr)));

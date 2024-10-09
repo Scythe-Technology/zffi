@@ -23,11 +23,11 @@ test "simple ffi" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{ .{ .ffiType = ffi.Type.i16 }, .{ .ffiType = ffi.Type.u16 }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i64 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1: i16 = 0x1234;
-    const arg2: u16 = 0x5678;
-    const arg3: i32 = 0x12345678;
-    const arg4: f32 = 3.14;
-    const arg5: i64 = 0x12121212_24242424;
+    var arg1: i16 = 0x1234;
+    var arg2: u16 = 0x5678;
+    var arg3: i32 = 0x12345678;
+    var arg4: f32 = 3.14;
+    var arg5: i64 = 0x12121212_24242424;
 
     const ret = try ffiFunc.call(&.{
         &arg1, &arg2, &arg3, &arg4, &arg5,
@@ -64,7 +64,7 @@ test "simple ffi with param underflow" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{.{ .ffiType = ffi.Type.i8 }}, .{ .ffiType = ffi.Type.void });
     defer ffiFunc.deinit();
 
-    const arg1: i8 = 1;
+    var arg1: i8 = 1;
     _ = try ffiFunc.call(&.{&arg1});
 }
 
@@ -80,8 +80,8 @@ test "simple ffi with param overflow" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{ .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.i8 } }, .{ .ffiType = ffi.Type.void });
     defer ffiFunc.deinit();
 
-    const arg1: i8 = 1;
-    const arg2: i8 = 2;
+    var arg1: i8 = 1;
+    var arg2: i8 = 2;
     _ = try ffiFunc.call(&.{ &arg1, &arg2 });
 }
 
@@ -92,8 +92,8 @@ test "c basic ffi - int add(int a, int b)" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.add, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1: i32 = 1;
-    const arg2: i32 = 1;
+    var arg1: i32 = 1;
+    var arg2: i32 = 1;
     const result = try ffiFunc.call(&.{ &arg1, &arg2 });
     try std.testing.expectEqual(2, result);
 }
@@ -105,13 +105,13 @@ test "c basic ffi - int check(int a, int b);" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.check, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1a: i32 = 1;
-    const arg2a: i32 = 2;
+    var arg1a: i32 = 1;
+    var arg2a: i32 = 2;
     const resulta = try ffiFunc.call(&.{ &arg1a, &arg2a });
     try std.testing.expectEqual(0, resulta);
 
-    const arg1b: i32 = 500;
-    const arg2b: i32 = 500;
+    var arg1b: i32 = 500;
+    var arg2b: i32 = 500;
     const resultb = try ffiFunc.call(&.{ &arg1b, &arg2b });
     try std.testing.expectEqual(1, resultb);
 }
@@ -124,8 +124,8 @@ test "c basic ffi - void set(int *a, int b);" {
     defer ffiFunc.deinit();
 
     var arg1: i32 = 1;
-    const arg2: i32 = 345;
-    _ = try ffiFunc.call(&.{ @ptrCast(&&arg1), &arg2 });
+    var arg2: i32 = 345;
+    _ = try ffiFunc.call(&.{ @constCast(@ptrCast(&&arg1)), &arg2 });
 
     try std.testing.expectEqual(345, arg1);
 }
@@ -137,9 +137,9 @@ test "c basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.runOpFunc, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1: i32 = 10;
-    const arg2: i32 = 2;
-    const res = try ffiFunc.call(&.{ @ptrCast(&&c.add), &arg1, &arg2 });
+    var arg1: i32 = 10;
+    var arg2: i32 = 2;
+    const res = try ffiFunc.call(&.{ @constCast(@ptrCast(&&c.add)), &arg1, &arg2 });
 
     try std.testing.expectEqual(12, res);
 }
@@ -169,7 +169,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.runOpFunc, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1: i32 = 10;
+    var arg1: i32 = 10;
     var arg2: i32 = 2;
 
     try closure.prep();
@@ -205,7 +205,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.runOpFunc, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const arg1: i32 = 10;
+    var arg1: i32 = 10;
     var arg2: i32 = 2;
 
     try closure.prep();
@@ -234,7 +234,7 @@ test "structure basic ffi" {
     if (!ffi.Supported()) return;
     const allocator = std.testing.allocator;
 
-    var ffiStructA = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i64 }});
+    var ffiStructA = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i64 } });
     defer ffiStructA.deinit();
 
     try std.testing.expectEqual(@sizeOf(sampleStructA), ffiStructA.getSize());
@@ -247,39 +247,39 @@ test "structure basic ffi" {
     const structObjectA = try allocator.alloc(u8, ffiStructA.getSize());
     defer allocator.free(structObjectA);
 
-    const aVarA : [4]u8 = @bitCast(@as(i32, 1));
-    const bVarA : [4]u8 = @bitCast(@as(i32, 2));
-    const cVarA : [1]u8 = @bitCast(@as(i8, 44));
-    const dVarA : [4]u8 = @bitCast(@as(f32, 3.14));
-    const eVarA : [8]u8 = @bitCast(@as(i64, 0x12121212_24242424));
-    @memcpy(structObjectA[ffiStructA.offsets[0]..ffiStructA.offsets[0]+4], aVarA[0..4]);
-    @memcpy(structObjectA[ffiStructA.offsets[1]..ffiStructA.offsets[1]+4], bVarA[0..4]);
-    @memcpy(structObjectA[ffiStructA.offsets[2]..ffiStructA.offsets[2]+1], cVarA[0..1]);
-    @memcpy(structObjectA[ffiStructA.offsets[3]..ffiStructA.offsets[3]+4], dVarA[0..4]);
-    @memcpy(structObjectA[ffiStructA.offsets[4]..ffiStructA.offsets[4]+8], eVarA[0..8]);
+    const aVarA: [4]u8 = @bitCast(@as(i32, 1));
+    const bVarA: [4]u8 = @bitCast(@as(i32, 2));
+    const cVarA: [1]u8 = @bitCast(@as(i8, 44));
+    const dVarA: [4]u8 = @bitCast(@as(f32, 3.14));
+    const eVarA: [8]u8 = @bitCast(@as(i64, 0x12121212_24242424));
+    @memcpy(structObjectA[ffiStructA.offsets[0] .. ffiStructA.offsets[0] + 4], aVarA[0..4]);
+    @memcpy(structObjectA[ffiStructA.offsets[1] .. ffiStructA.offsets[1] + 4], bVarA[0..4]);
+    @memcpy(structObjectA[ffiStructA.offsets[2] .. ffiStructA.offsets[2] + 1], cVarA[0..1]);
+    @memcpy(structObjectA[ffiStructA.offsets[3] .. ffiStructA.offsets[3] + 4], dVarA[0..4]);
+    @memcpy(structObjectA[ffiStructA.offsets[4] .. ffiStructA.offsets[4] + 8], eVarA[0..8]);
 
-    const castStructA : *sampleStructA = @ptrCast(@alignCast(structObjectA.ptr));
+    const castStructA: *sampleStructA = @ptrCast(@alignCast(structObjectA.ptr));
     try std.testing.expectEqual(1, castStructA.a);
     try std.testing.expectEqual(2, castStructA.b);
     try std.testing.expectEqual(44, castStructA.c);
     try std.testing.expectEqual(3.14, castStructA.d);
     try std.testing.expectEqual(0x12121212_24242424, castStructA.e);
 
-    var ffiStructB = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .structType = ffiStructA }});
+    var ffiStructB = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .structType = ffiStructA } });
     defer ffiStructB.deinit();
 
     try std.testing.expectEqual(@sizeOf(sampleStructB), ffiStructB.getSize());
     try std.testing.expectEqual(@offsetOf(sampleStructB, "a"), ffiStructB.offsets[0]);
     try std.testing.expectEqual(@offsetOf(sampleStructB, "b"), ffiStructB.offsets[1]);
-    
+
     const structObjectB = try allocator.alloc(u8, ffiStructB.getSize());
     defer allocator.free(structObjectB);
 
-    const aVarB : [4]u8 = @bitCast(@as(i32, 3));
-    @memcpy(structObjectB[ffiStructB.offsets[0]..ffiStructB.offsets[0]+4], aVarB[0..4]);
-    @memcpy(structObjectB[ffiStructB.offsets[1]..ffiStructB.offsets[1]+ffiStructA.getSize()], structObjectA[0..ffiStructA.getSize()]);
+    const aVarB: [4]u8 = @bitCast(@as(i32, 3));
+    @memcpy(structObjectB[ffiStructB.offsets[0] .. ffiStructB.offsets[0] + 4], aVarB[0..4]);
+    @memcpy(structObjectB[ffiStructB.offsets[1] .. ffiStructB.offsets[1] + ffiStructA.getSize()], structObjectA[0..ffiStructA.getSize()]);
 
-    const castStructB : *sampleStructB = @ptrCast(@alignCast(structObjectB.ptr));
+    const castStructB: *sampleStructB = @ptrCast(@alignCast(structObjectB.ptr));
 
     try std.testing.expectEqual(3, castStructB.a);
     try std.testing.expectEqual(1, castStructB.b.a);
@@ -287,7 +287,6 @@ test "structure basic ffi" {
     try std.testing.expectEqual(44, castStructB.b.c);
     try std.testing.expectEqual(3.14, castStructB.b.d);
     try std.testing.expectEqual(0x12121212_24242424, castStructB.b.e);
-
 }
 
 test "structure basic ffi function" {
@@ -301,31 +300,31 @@ test "structure basic ffi function" {
 
     const allocator = std.testing.allocator;
 
-    var ffiStruct = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i32 }});
+    var ffiStruct = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i32 } });
     defer ffiStruct.deinit();
 
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.validateStruct, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
     defer ffiFunc.deinit();
 
-    const structObject = try allocator.alloc(u8, ffiStruct.getSize());
+    var structObject = try allocator.alloc(u8, ffiStruct.getSize());
     defer allocator.free(structObject);
 
-    const aVar : [1]u8 = @bitCast(@as(i8, 15));
-    const bVar : [4]u8 = @bitCast(@as(f32, 3.14));
-    const cVar : [4]u8 = @bitCast(@as(i32, 12345678));
-    @memcpy(structObject[ffiStruct.offsets[0]..ffiStruct.offsets[0]+1], aVar[0..1]);
-    @memcpy(structObject[ffiStruct.offsets[1]..ffiStruct.offsets[1]+4], bVar[0..4]);
-    @memcpy(structObject[ffiStruct.offsets[2]..ffiStruct.offsets[2]+4], cVar[0..4]);
+    const aVar: [1]u8 = @bitCast(@as(i8, 15));
+    const bVar: [4]u8 = @bitCast(@as(f32, 3.14));
+    const cVar: [4]u8 = @bitCast(@as(i32, 12345678));
+    @memcpy(structObject[ffiStruct.offsets[0] .. ffiStruct.offsets[0] + 1], aVar[0..1]);
+    @memcpy(structObject[ffiStruct.offsets[1] .. ffiStruct.offsets[1] + 4], bVar[0..4]);
+    @memcpy(structObject[ffiStruct.offsets[2] .. ffiStruct.offsets[2] + 4], cVar[0..4]);
 
-    const castStruct : *c.simpleUnknownStruct = @ptrCast(@alignCast(structObject.ptr));
+    const castStruct: *c.simpleUnknownStruct = @ptrCast(@alignCast(structObject.ptr));
 
     try std.testing.expectEqual(15, castStruct.a);
     try std.testing.expectEqual(3.14, castStruct.b);
     try std.testing.expectEqual(12345678, castStruct.c);
 
-    const arg1: i8 = 15;
-    const arg2: f32 = 3.14;
-    const arg3: i32 = 12345678;
+    var arg1: i8 = 15;
+    var arg2: f32 = 3.14;
+    var arg3: i32 = 12345678;
 
     const res = try ffiFunc.call(&.{ @ptrCast(&structObject.ptr), &arg1, &arg2, &arg3 });
 
