@@ -229,11 +229,20 @@ pub const CallableFunction = struct {
         };
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) !usize {
+    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) ![]u8 {
         if (callArgs.len != self.argTypes.len - 1) return PrepError.BadArgumentType;
-        var retValue: usize = undefined;
-        clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @ptrCast(self.fnPtr)), &retValue, @constCast(@ptrCast(callArgs.ptr)));
+        const size = switch (self.returnType) {
+            .ffiType => |ffiType| ffiType.toSize(),
+            .structType => |structType| structType.structType.size,
+        };
+        const retValue = try self.allocator.alloc(u8, size);
+        defer if (size == 0) self.allocator.free(retValue);
+        clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @ptrCast(self.fnPtr)), @ptrCast(retValue.ptr), @constCast(@ptrCast(callArgs.ptr)));
         return retValue;
+    }
+
+    pub fn free(self: *CallableFunction, retValue: []u8) void {
+        self.allocator.free(retValue);
     }
 
     pub fn deinit(self: *CallableFunction) void {

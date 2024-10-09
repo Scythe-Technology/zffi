@@ -132,10 +132,15 @@ pub const CallableFunction = struct {
         @panic("FFI is unsupported on this platform");
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) !usize {
+    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) ![]u8 {
         _ = self;
         _ = callArgs;
         @panic("FFI is unsupported on this platform");
+    }
+
+    pub fn free(self: *CallableFunction, retValue: []u8) void {
+        _ = self;
+        _ = retValue;
     }
 
     pub fn deinit(self: *CallableFunction) void {

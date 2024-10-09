@@ -32,8 +32,9 @@ test "simple ffi" {
     const ret = try ffiFunc.call(&.{
         &arg1, &arg2, &arg3, &arg4, &arg5,
     });
+    defer ffiFunc.free(ret);
 
-    try std.testing.expect(ret == 123);
+    try std.testing.expect(std.mem.readVarInt(i32, ret, .little) == 123);
 }
 
 test "simple ffi with void return" {
@@ -95,7 +96,9 @@ test "c basic ffi - int add(int a, int b)" {
     var arg1: i32 = 1;
     var arg2: i32 = 1;
     const result = try ffiFunc.call(&.{ &arg1, &arg2 });
-    try std.testing.expectEqual(2, result);
+    defer ffiFunc.free(result);
+
+    try std.testing.expectEqual(2, std.mem.readVarInt(i32, result, .little));
 }
 
 test "c basic ffi - int check(int a, int b);" {
@@ -108,12 +111,16 @@ test "c basic ffi - int check(int a, int b);" {
     var arg1a: i32 = 1;
     var arg2a: i32 = 2;
     const resulta = try ffiFunc.call(&.{ &arg1a, &arg2a });
-    try std.testing.expectEqual(0, resulta);
+    defer ffiFunc.free(resulta);
+
+    try std.testing.expectEqual(0, std.mem.readVarInt(i32, resulta, .little));
 
     var arg1b: i32 = 500;
     var arg2b: i32 = 500;
     const resultb = try ffiFunc.call(&.{ &arg1b, &arg2b });
-    try std.testing.expectEqual(1, resultb);
+    defer ffiFunc.free(resultb);
+
+    try std.testing.expectEqual(1, std.mem.readVarInt(i32, resultb, .little));
 }
 
 test "c basic ffi - void set(int *a, int b);" {
@@ -140,8 +147,9 @@ test "c basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     var arg1: i32 = 10;
     var arg2: i32 = 2;
     const res = try ffiFunc.call(&.{ @constCast(@ptrCast(&&c.add)), &arg1, &arg2 });
+    defer ffiFunc.free(res);
 
-    try std.testing.expectEqual(12, res);
+    try std.testing.expectEqual(12, std.mem.readVarInt(i32, res, .little));
 }
 
 test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
@@ -174,11 +182,13 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
 
     try closure.prep();
     const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
+    defer ffiFunc.free(res);
     arg2 = 5;
     const res2 = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
+    defer ffiFunc.free(res2);
 
-    try std.testing.expectEqual(5, res);
-    try std.testing.expectEqual(2, res2);
+    try std.testing.expectEqual(5, std.mem.readVarInt(i32, res, .little));
+    try std.testing.expectEqual(2, std.mem.readVarInt(i32, res2, .little));
 }
 
 test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
@@ -210,11 +220,13 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
 
     try closure.prep();
     const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
+    defer ffiFunc.free(res);
     arg2 = 3;
     const res2 = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
+    defer ffiFunc.free(res2);
 
-    try std.testing.expectEqual(21, res);
-    try std.testing.expectEqual(31, res2);
+    try std.testing.expectEqual(21, std.mem.readVarInt(i32, res, .little));
+    try std.testing.expectEqual(31, std.mem.readVarInt(i32, res2, .little));
 }
 
 const sampleStructA = extern struct {
@@ -327,6 +339,7 @@ test "structure basic ffi function" {
     var arg3: i32 = 12345678;
 
     const res = try ffiFunc.call(&.{ @ptrCast(&structObject.ptr), &arg1, &arg2, &arg3 });
+    defer ffiFunc.free(res);
 
-    try std.testing.expectEqual(1, res);
+    try std.testing.expectEqual(1, std.mem.readVarInt(i32, res, .little));
 }
