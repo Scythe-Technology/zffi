@@ -237,7 +237,7 @@ pub const CallableFunction = struct {
         };
         const retValue = try self.allocator.alloc(u8, size);
         defer if (size == 0) self.allocator.free(retValue);
-        clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @ptrCast(self.fnPtr)), @ptrCast(retValue.ptr), @constCast(@ptrCast(callArgs.ptr)));
+        clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @alignCast(@ptrCast(self.fnPtr))), @ptrCast(retValue.ptr), @constCast(@ptrCast(callArgs.ptr)));
         return retValue;
     }
 
