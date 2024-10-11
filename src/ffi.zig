@@ -136,15 +136,15 @@ pub const Struct = struct {
         return @constCast(@ptrCast(&self.structType));
     }
 
-    pub fn getType(self: *Struct) clib.ffi_type {
+    pub fn getType(self: *const Struct) clib.ffi_type {
         return self.structType;
     }
 
-    pub fn getSize(self: *Struct) usize {
+    pub fn getSize(self: *const Struct) usize {
         return self.structType.size;
     }
 
-    pub fn getAlignment(self: *Struct) u16 {
+    pub fn getAlignment(self: *const Struct) u16 {
         return @intCast(self.structType.alignment);
     }
 
