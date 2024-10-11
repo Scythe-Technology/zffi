@@ -144,6 +144,10 @@ pub const Struct = struct {
         return self.structType.size;
     }
 
+    pub fn getAlignment(self: *Struct) u16 {
+        return @intCast(self.structType.alignment);
+    }
+
     pub fn deinit(self: *Struct) void {
         self.allocator.free(self.structFields);
         self.allocator.free(self.offsets);
@@ -153,6 +157,34 @@ pub const Struct = struct {
 pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
+
+    pub fn getSize(self: GenType) usize {
+        return switch (self) {
+            .ffiType => |ffiType| ffiType.toSize(),
+            .structType => |structType| structType.getSize(),
+        };
+    }
+
+    pub fn getAlignment(self: GenType) u16 {
+        return switch (self) {
+            .ffiType => |ffiType| switch (ffiType) {
+                .void => @alignOf(void),
+                .u8 => @alignOf(u8),
+                .i8 => @alignOf(i8),
+                .u16 => @alignOf(u16),
+                .i16 => @alignOf(i16),
+                .u32 => @alignOf(u32),
+                .i32 => @alignOf(i32),
+                .u64 => @alignOf(u64),
+                .i64 => @alignOf(i64),
+                .float => @alignOf(f32),
+                .double => @alignOf(f64),
+                .pointer => @alignOf(*anyopaque),
+                .unknownReturn => @panic("Unknown return type"),
+            },
+            .structType => |structType| structType.getAlignment(),
+        };
+    }
 };
 
 /// Convert a FFI type to a Zig FFI type
