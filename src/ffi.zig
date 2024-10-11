@@ -50,7 +50,6 @@ pub const Type = enum(usize) {
     float,
     double,
     pointer,
-    unknownReturn,
 
     pub inline fn toNative(t: Type) [*c]clib.ffi_type {
         return switch (t) {
@@ -180,7 +179,6 @@ pub const GenType = union(enum) {
                 .float => @alignOf(f32),
                 .double => @alignOf(f64),
                 .pointer => @alignOf(*anyopaque),
-                .unknownReturn => @panic("Unknown return type"),
             },
             .structType => |structType| structType.getAlignment(),
         };
@@ -188,7 +186,7 @@ pub const GenType = union(enum) {
 };
 
 /// Convert a FFI type to a Zig FFI type
-pub fn toffiType(t: [*c]clib.ffi_type) Type {
+pub fn toffiType(t: [*c]clib.ffi_type) ?Type {
     if (t == c_ffi_type_void) {
         return Type.void;
     } else if (t == c_ffi_type_uint8) {
@@ -213,9 +211,7 @@ pub fn toffiType(t: [*c]clib.ffi_type) Type {
         return Type.double;
     } else if (t == c_ffi_type_pointer) {
         return Type.pointer;
-    } else {
-        return Type.unknownReturn;
-    }
+    } else return null;
 }
 
 /// A wrapper for FFI function that can be called from Zig
