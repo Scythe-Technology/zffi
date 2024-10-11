@@ -65,7 +65,6 @@ pub const Type = enum(usize) {
             .float => c_ffi_type_float,
             .double => c_ffi_type_double,
             .pointer => c_ffi_type_pointer,
-            else => unreachable,
         };
     }
 
@@ -83,7 +82,6 @@ pub const Type = enum(usize) {
             .float => 4,
             .double => 8,
             .pointer => @sizeOf(*anyopaque),
-            else => unreachable,
         };
     }
 };
