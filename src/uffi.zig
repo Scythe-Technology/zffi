@@ -179,7 +179,7 @@ pub const CallableFunction = struct {
 };
 
 const CClosureFn = fn (cif: [*c]CallInfo, ret: ?*anyopaque, args: [*c]?*anyopaque, user_data: ?*anyopaque) callconv(.C) void;
-const ZigClosureFn = fn (cif: CallInfo, args: []?*anyopaque, ret: ?*anyopaque) void;
+const ZigClosureFn = fn (cif: CallInfo, args: []?*anyopaque, ret: ?*anyopaque, user_data: ?*anyopaque) void;
 
 pub fn toCClosureFn(comptime func: ZigClosureFn) CClosureFn {
     return struct {
@@ -212,8 +212,9 @@ pub const CallbackClosure = struct {
         @panic("FFI is unsupported on this platform");
     }
 
-    pub fn prep(self: *CallbackClosure) !void {
+    pub fn prep(self: *CallbackClosure, user_data: ?*anyopaque) !void {
         _ = self;
+        _ = user_data;
         @panic("FFI is unsupported on this platform");
     }
 

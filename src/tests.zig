@@ -157,7 +157,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     const allocator = std.testing.allocator;
 
     const closureFunction = struct {
-        fn cfn(cif: [*c]ffi.CallInfo, _ret: ?*anyopaque, _args: [*c]?*anyopaque, user_data: ?*anyopaque) callconv(.C) void {
+        fn cfn(cif: [*c]ffi.CallInfo, _ret: ?*anyopaque, _args: [*c]?*anyopaque, _: ?*anyopaque) callconv(.C) void {
             std.testing.expectEqual(2, cif.*.nargs) catch unreachable;
             const ret = _ret orelse unreachable;
             _ = user_data;
@@ -180,7 +180,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     var arg1: i32 = 10;
     var arg2: i32 = 2;
 
-    try closure.prep();
+    try closure.prep(null);
     const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
     defer ffiFunc.free(res);
     arg2 = 5;
@@ -196,7 +196,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
     const allocator = std.testing.allocator;
 
     const closureFunction = struct {
-        fn cfn(cif: ffi.CallInfo, args: []?*anyopaque, _ret: ?*anyopaque) void {
+        fn cfn(cif: ffi.CallInfo, args: []?*anyopaque, _ret: ?*anyopaque, _: ?*anyopaque) void {
             std.testing.expectEqual(2, cif.nargs) catch unreachable;
             std.testing.expectEqual(2, args.len) catch unreachable;
             const ret = _ret orelse unreachable;
@@ -218,7 +218,7 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
     var arg1: i32 = 10;
     var arg2: i32 = 2;
 
-    try closure.prep();
+    try closure.prep(null);
     const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
     defer ffiFunc.free(res);
     arg2 = 3;

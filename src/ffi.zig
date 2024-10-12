@@ -277,15 +277,14 @@ pub const CallableFunction = struct {
 };
 
 const CClosureFn = fn (cif: [*c]CallInfo, ret: ?*anyopaque, args: [*c]?*anyopaque, user_data: ?*anyopaque) callconv(.C) void;
-const ZigClosureFn = fn (cif: CallInfo, args: []?*anyopaque, ret: ?*anyopaque) void;
+const ZigClosureFn = fn (cif: CallInfo, args: []?*anyopaque, ret: ?*anyopaque, user_data: ?*anyopaque) void;
 
 pub fn toCClosureFn(comptime func: ZigClosureFn) CClosureFn {
     return struct {
         fn cfunc(cif: [*c]CallInfo, ret: ?*anyopaque, _args: [*c]?*anyopaque, user_data: ?*anyopaque) callconv(.C) void {
             const callInfo = cif.*;
-            _ = user_data;
             const args: []?*anyopaque = _args[0..callInfo.nargs];
-            @call(.always_inline, func, .{ callInfo, args, ret });
+            @call(.always_inline, func, .{ callInfo, args, ret, user_data });
         }
     }.cfunc;
 }
@@ -341,8 +340,8 @@ pub const CallbackClosure = struct {
         };
     }
 
-    pub fn prep(self: *CallbackClosure) !void {
-        const status = clib.ffi_prep_closure_loc(self.closure, &self.cif, self.functionPtr, null, self.executable);
+    pub fn prep(self: *CallbackClosure, user_data: ?*anyopaque) !void {
+        const status = clib.ffi_prep_closure_loc(self.closure, &self.cif, self.functionPtr, user_data, self.executable);
         if (status != clib.FFI_OK) {
             return if (status == clib.FFI_BAD_ABI)
                 PrepError.BadABI
