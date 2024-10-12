@@ -160,7 +160,6 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
         fn cfn(cif: [*c]ffi.CallInfo, _ret: ?*anyopaque, _args: [*c]?*anyopaque, _: ?*anyopaque) callconv(.C) void {
             std.testing.expectEqual(2, cif.*.nargs) catch unreachable;
             const ret = _ret orelse unreachable;
-            _ = user_data;
             const args: []?*anyopaque = _args[0..cif.*.nargs];
             const a: *i32 = @ptrCast(@alignCast((args[0] orelse unreachable)));
             std.testing.expectEqual(10, a.*) catch unreachable;
