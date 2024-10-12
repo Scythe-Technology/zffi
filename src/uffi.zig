@@ -5,7 +5,12 @@ pub fn Supported() bool {
     return false;
 }
 
-const clib_ffi_type = extern struct {};
+const clib_ffi_type = extern struct {
+    size: usize,
+    alignment: u16,
+    type: c_ushort,
+    elements: [*c][*c]clib_ffi_type,
+};
 const clib_ffi_cif = extern struct {
     abi: c_uint,
     nargs: c_uint,
@@ -89,6 +94,11 @@ pub const Struct = struct {
     }
 
     pub fn getSize(self: *const Struct) usize {
+        _ = self;
+        @panic("FFI is unsupported on this platform");
+    }
+
+    pub fn getAlignment(self: *const Struct) u16 {
         _ = self;
         @panic("FFI is unsupported on this platform");
     }
