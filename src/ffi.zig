@@ -136,10 +136,6 @@ pub const Struct = struct {
         return @ptrCast(self.structType);
     }
 
-    pub fn getType(self: *const Struct) clib.ffi_type {
-        return self.structType;
-    }
-
     pub fn getSize(self: *const Struct) usize {
         return self.structType.size;
     }

@@ -43,7 +43,6 @@ pub const Type = enum(usize) {
     float,
     double,
     pointer,
-    unknownReturn,
 
     pub inline fn toNative(t: Type) [*c]clib_ffi_type {
         return switch (t) {
@@ -65,7 +64,6 @@ pub const Type = enum(usize) {
             .float => 4,
             .double => 8,
             .pointer => @sizeOf(*anyopaque),
-            else => unreachable,
         };
     }
 };
@@ -74,7 +72,7 @@ pub const Type = enum(usize) {
 pub const Struct = struct {
     allocator: std.mem.Allocator,
     fields: []const GenType,
-    structType: clib_ffi_type,
+    structType: *clib_ffi_type,
     structFields: [][*c]clib_ffi_type,
     offsets: []usize,
 
@@ -90,12 +88,7 @@ pub const Struct = struct {
         @panic("FFI is unsupported on this platform");
     }
 
-    pub fn getType(self: *Struct) clib_ffi_type {
-        _ = self;
-        @panic("FFI is unsupported on this platform");
-    }
-
-    pub fn getSize(self: *Struct) usize {
+    pub fn getSize(self: *const Struct) usize {
         _ = self;
         @panic("FFI is unsupported on this platform");
     }
@@ -108,10 +101,37 @@ pub const Struct = struct {
 pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
+
+    pub fn getSize(self: GenType) usize {
+        return switch (self) {
+            .ffiType => |ffiType| ffiType.toSize(),
+            .structType => |structType| structType.getSize(),
+        };
+    }
+
+    pub fn getAlignment(self: GenType) u16 {
+        return switch (self) {
+            .ffiType => |ffiType| switch (ffiType) {
+                .void => @alignOf(void),
+                .u8 => @alignOf(u8),
+                .i8 => @alignOf(i8),
+                .u16 => @alignOf(u16),
+                .i16 => @alignOf(i16),
+                .u32 => @alignOf(u32),
+                .i32 => @alignOf(i32),
+                .u64 => @alignOf(u64),
+                .i64 => @alignOf(i64),
+                .float => @alignOf(f32),
+                .double => @alignOf(f64),
+                .pointer => @alignOf(*anyopaque),
+            },
+            .structType => |structType| structType.getAlignment(),
+        };
+    }
 };
 
 /// Convert a FFI type to a Zig FFI type
-pub fn toffiType(t: [*c]clib_ffi_type) Type {
+pub fn toffiType(t: [*c]clib_ffi_type) ?Type {
     _ = t;
     @panic("FFI is unsupported on this platform");
 }
