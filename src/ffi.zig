@@ -90,7 +90,7 @@ pub const Type = enum(usize) {
 pub const Struct = struct {
     allocator: std.mem.Allocator,
     fields: []const GenType,
-    structType: clib.ffi_type,
+    structType: *clib.ffi_type,
     structFields: [][*c]clib.ffi_type,
     offsets: []usize,
 
@@ -106,7 +106,10 @@ pub const Struct = struct {
 
         structFields[fields.len] = null;
 
-        var structType = clib.ffi_type{
+        const structPtr = try allocator.create(clib.ffi_type);
+        errdefer allocator.destroy(structPtr);
+
+        structPtr.* = clib.ffi_type{
             .size = 0,
             .alignment = 0,
             .type = clib.FFI_TYPE_STRUCT,
@@ -116,7 +119,7 @@ pub const Struct = struct {
         const offsets = try allocator.alloc(usize, fields.len);
         errdefer allocator.free(offsets);
 
-        const status = clib.ffi_get_struct_offsets(clib.FFI_DEFAULT_ABI, @ptrCast(&structType), offsets.ptr);
+        const status = clib.ffi_get_struct_offsets(clib.FFI_DEFAULT_ABI, structPtr, offsets.ptr);
         if (status != clib.FFI_OK) {
             return if (status == clib.FFI_BAD_ABI)
                 PrepError.BadABI
@@ -126,11 +129,11 @@ pub const Struct = struct {
                 PrepError.BadArgumentType;
         }
 
-        return .{ .allocator = allocator, .fields = fields, .structType = structType, .structFields = structFields, .offsets = offsets };
+        return .{ .allocator = allocator, .fields = fields, .structType = structPtr, .structFields = structFields, .offsets = offsets };
     }
 
     pub fn toNative(self: *const Struct) [*c]clib.ffi_type {
-        return @constCast(@ptrCast(&self.structType));
+        return @ptrCast(self.structType);
     }
 
     pub fn getType(self: *const Struct) clib.ffi_type {
@@ -148,6 +151,7 @@ pub const Struct = struct {
     pub fn deinit(self: *Struct) void {
         self.allocator.free(self.structFields);
         self.allocator.free(self.offsets);
+        self.allocator.destroy(self.structType);
     }
 };
 
