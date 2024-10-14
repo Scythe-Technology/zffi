@@ -5,11 +5,6 @@ pub fn build(b: *std.Build) !void {
     const optimize = b.standardOptimizeOption(.{});
     const t = target.result;
 
-    const ffi_dep = b.dependency("libffi", .{
-        .target = target,
-        .optimize = optimize,
-    });
-
     const safe_build = b.option(bool, "safe_build", "Build regardless if the device doesn't support ffi") orelse false;
 
     const ffiModule = b.addModule("ffi", .{
@@ -44,6 +39,10 @@ pub fn build(b: *std.Build) !void {
         .riscv32, .riscv64 => !t.isGnuLibC(),
         else => true,
     }) {
+        const ffi_dep = b.dependency("libffi", .{
+            .target = target,
+            .optimize = optimize,
+        });
         const bffiLib = ffi_dep.artifact("ffi");
         lib.linkLibrary(bffiLib);
         ffiModule.addIncludePath(bffiLib.getEmittedIncludeTree());
