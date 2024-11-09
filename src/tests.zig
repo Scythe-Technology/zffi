@@ -1,12 +1,16 @@
 const std = @import("std");
 const ffi = @import("ffi");
+const builtin = @import("builtin");
 
 const c = @cImport({
     @cInclude("basic.h");
 });
 
+const arch_endian = builtin.target.cpu.arch.endian();
+
 test "simple ffi" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
     const nativeFunction = struct {
         fn cfn(short: i16, char: u16, int: i32, float: f32, long: i64) callconv(.C) i32 {
@@ -29,16 +33,61 @@ test "simple ffi" {
     var arg4: f32 = 3.14;
     var arg5: i64 = 0x12121212_24242424;
 
-    const ret = try ffiFunc.call(&.{
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{
         &arg1, &arg2, &arg3, &arg4, &arg5,
     });
-    defer ffiFunc.free(ret);
 
-    try std.testing.expect(std.mem.readVarInt(i32, ret, .little) == 123);
+    try std.testing.expect(std.mem.readVarInt(i32, ret, arch_endian) == 123);
+}
+
+var GLOBAL_NOTHING_VAR: i32 = 0;
+test "simple ffi - nothing" {
+    if (!ffi.Supported())
+        return;
+    const allocator = std.testing.allocator;
+    const nativeFunction = struct {
+        fn cfn() callconv(.C) void {
+            GLOBAL_NOTHING_VAR = 1;
+        }
+    }.cfn;
+
+    var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{}, .{ .ffiType = ffi.Type.void });
+    defer ffiFunc.deinit();
+
+    try ffiFunc.call(null, null);
+    try std.testing.expect(GLOBAL_NOTHING_VAR == 1);
+}
+
+test "simple ffi - pointer" {
+    if (!ffi.Supported())
+        return;
+    const allocator = std.testing.allocator;
+    const nativeFunction = struct {
+        fn cfn() callconv(.C) *i32 {
+            const ptr = std.heap.page_allocator.create(i32) catch @panic("OOM");
+            ptr.* = 123;
+            return ptr;
+        }
+    }.cfn;
+
+    var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{}, .{ .ffiType = ffi.Type.pointer });
+    defer ffiFunc.deinit();
+
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, null);
+
+    const ptr: *i32 = @ptrFromInt(std.mem.readVarInt(usize, ret, arch_endian));
+    defer std.heap.page_allocator.destroy(ptr);
+
+    try std.testing.expect(ptr.* == 123);
 }
 
 test "simple ffi with void return" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
     const nativeFunction = struct {
         fn cfn(b: i8) callconv(.C) void {
@@ -49,11 +98,12 @@ test "simple ffi with void return" {
     var ffiFunc = try ffi.CallableFunction.init(allocator, &nativeFunction, &.{}, .{ .ffiType = ffi.Type.void });
     defer ffiFunc.deinit();
 
-    _ = try ffiFunc.call(&.{});
+    try ffiFunc.call(null, null);
 }
 
 test "simple ffi with param underflow" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
     const nativeFunction = struct {
         fn cfn(a: i8, b: i8) callconv(.C) void {
@@ -66,11 +116,12 @@ test "simple ffi with param underflow" {
     defer ffiFunc.deinit();
 
     var arg1: i8 = 1;
-    _ = try ffiFunc.call(&.{&arg1});
+    try ffiFunc.call(null, &.{&arg1});
 }
 
 test "simple ffi with param overflow" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
     const nativeFunction = struct {
         fn cfn(a: i8) callconv(.C) void {
@@ -83,11 +134,12 @@ test "simple ffi with param overflow" {
 
     var arg1: i8 = 1;
     var arg2: i8 = 2;
-    _ = try ffiFunc.call(&.{ &arg1, &arg2 });
+    try ffiFunc.call(null, &.{ &arg1, &arg2 });
 }
 
 test "c basic ffi - int add(int a, int b)" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.add, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
@@ -95,14 +147,16 @@ test "c basic ffi - int add(int a, int b)" {
 
     var arg1: i32 = 1;
     var arg2: i32 = 1;
-    const result = try ffiFunc.call(&.{ &arg1, &arg2 });
-    defer ffiFunc.free(result);
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ &arg1, &arg2 });
 
-    try std.testing.expectEqual(2, std.mem.readVarInt(i32, result, .little));
+    try std.testing.expectEqual(2, std.mem.readVarInt(i32, ret, arch_endian));
 }
 
 test "c basic ffi - int check(int a, int b);" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.check, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
@@ -110,21 +164,24 @@ test "c basic ffi - int check(int a, int b);" {
 
     var arg1a: i32 = 1;
     var arg2a: i32 = 2;
-    const resulta = try ffiFunc.call(&.{ &arg1a, &arg2a });
-    defer ffiFunc.free(resulta);
+    const retA = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(retA);
+    try ffiFunc.call(retA, &.{ &arg1a, &arg2a });
 
-    try std.testing.expectEqual(0, std.mem.readVarInt(i32, resulta, .little));
+    try std.testing.expectEqual(0, std.mem.readVarInt(i32, retA, arch_endian));
 
     var arg1b: i32 = 500;
     var arg2b: i32 = 500;
-    const resultb = try ffiFunc.call(&.{ &arg1b, &arg2b });
-    defer ffiFunc.free(resultb);
+    const retB = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(retB);
+    try ffiFunc.call(retB, &.{ &arg1b, &arg2b });
 
-    try std.testing.expectEqual(1, std.mem.readVarInt(i32, resultb, .little));
+    try std.testing.expectEqual(1, std.mem.readVarInt(i32, retB, arch_endian));
 }
 
 test "c basic ffi - void set(int *a, int b);" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.set, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.void });
@@ -132,13 +189,16 @@ test "c basic ffi - void set(int *a, int b);" {
 
     var arg1: i32 = 1;
     var arg2: i32 = 345;
-    _ = try ffiFunc.call(&.{ @constCast(@ptrCast(&&arg1)), &arg2 });
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ @constCast(@ptrCast(&&arg1)), &arg2 });
 
     try std.testing.expectEqual(345, arg1);
 }
 
 test "c basic ffi - int runOpFunc(opFunc op, int a, int b);" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     var ffiFunc = try ffi.CallableFunction.init(allocator, &c.runOpFunc, &.{ .{ .ffiType = ffi.Type.pointer }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 } }, .{ .ffiType = ffi.Type.i32 });
@@ -146,14 +206,16 @@ test "c basic ffi - int runOpFunc(opFunc op, int a, int b);" {
 
     var arg1: i32 = 10;
     var arg2: i32 = 2;
-    const res = try ffiFunc.call(&.{ @constCast(@ptrCast(&&c.add)), &arg1, &arg2 });
-    defer ffiFunc.free(res);
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ @constCast(@ptrCast(&&c.add)), &arg1, &arg2 });
 
-    try std.testing.expectEqual(12, std.mem.readVarInt(i32, res, .little));
+    try std.testing.expectEqual(12, std.mem.readVarInt(i32, ret, arch_endian));
 }
 
 test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     const closureFunction = struct {
@@ -180,18 +242,22 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b);" {
     var arg2: i32 = 2;
 
     try closure.prep(null);
-    const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
-    defer ffiFunc.free(res);
-    arg2 = 5;
-    const res2 = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
-    defer ffiFunc.free(res2);
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ @ptrCast(&closure.executable), &arg1, &arg2 });
 
-    try std.testing.expectEqual(5, std.mem.readVarInt(i32, res, .little));
-    try std.testing.expectEqual(2, std.mem.readVarInt(i32, res2, .little));
+    arg2 = 5;
+    const ret2 = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret2);
+    try ffiFunc.call(ret2, &.{ @ptrCast(&closure.executable), &arg1, &arg2 });
+
+    try std.testing.expectEqual(5, std.mem.readVarInt(i32, ret, arch_endian));
+    try std.testing.expectEqual(2, std.mem.readVarInt(i32, ret2, arch_endian));
 }
 
 test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     const closureFunction = struct {
@@ -218,14 +284,16 @@ test "closure basic ffi - int runOpFunc(opFunc op, int a, int b); Zig Style" {
     var arg2: i32 = 2;
 
     try closure.prep(null);
-    const res = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
-    defer ffiFunc.free(res);
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ @ptrCast(&closure.executable), &arg1, &arg2 });
     arg2 = 3;
-    const res2 = try ffiFunc.call(&.{ @ptrCast(&closure.executable), &arg1, &arg2 });
-    defer ffiFunc.free(res2);
+    const ret2 = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret2);
+    try ffiFunc.call(ret2, &.{ @ptrCast(&closure.executable), &arg1, &arg2 });
 
-    try std.testing.expectEqual(21, std.mem.readVarInt(i32, res, .little));
-    try std.testing.expectEqual(31, std.mem.readVarInt(i32, res2, .little));
+    try std.testing.expectEqual(21, std.mem.readVarInt(i32, ret, arch_endian));
+    try std.testing.expectEqual(31, std.mem.readVarInt(i32, ret2, arch_endian));
 }
 
 const sampleStructA = extern struct {
@@ -242,7 +310,8 @@ const sampleStructB = extern struct {
 };
 
 test "structure basic ffi" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     const allocator = std.testing.allocator;
 
     var ffiStructA = try ffi.Struct.init(allocator, &.{ .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i32 }, .{ .ffiType = ffi.Type.i8 }, .{ .ffiType = ffi.Type.float }, .{ .ffiType = ffi.Type.i64 } });
@@ -301,7 +370,8 @@ test "structure basic ffi" {
 }
 
 test "structure basic ffi function" {
-    if (!ffi.Supported()) return;
+    if (!ffi.Supported())
+        return;
     // struct simpleUnknownStruct
     // {
     //     char a;
@@ -337,8 +407,9 @@ test "structure basic ffi function" {
     var arg2: f32 = 3.14;
     var arg3: i32 = 12345678;
 
-    const res = try ffiFunc.call(&.{ @ptrCast(&structObject.ptr), &arg1, &arg2, &arg3 });
-    defer ffiFunc.free(res);
+    const ret = try allocator.alloc(u8, ffiFunc.returnType.getSize());
+    defer allocator.free(ret);
+    try ffiFunc.call(ret, &.{ @ptrCast(&structObject.ptr), &arg1, &arg2, &arg3 });
 
-    try std.testing.expectEqual(1, std.mem.readVarInt(i32, res, .little));
+    try std.testing.expectEqual(1, std.mem.readVarInt(i32, ret, arch_endian));
 }

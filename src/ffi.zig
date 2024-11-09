@@ -155,14 +155,14 @@ pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
 
-    pub fn getSize(self: GenType) usize {
+    pub inline fn getSize(self: GenType) usize {
         return switch (self) {
             .ffiType => |ffiType| ffiType.toSize(),
             .structType => |structType| structType.getSize(),
         };
     }
 
-    pub fn getAlignment(self: GenType) u16 {
+    pub inline fn getAlignment(self: GenType) u16 {
         return switch (self) {
             .ffiType => |ffiType| switch (ffiType) {
                 .void => @alignOf(void),
@@ -223,15 +223,13 @@ pub const CallableFunction = struct {
     pub fn init(allocator: std.mem.Allocator, functionPtr: anytype, ffiArgTypes: []const GenType, ffiRetType: GenType) !CallableFunction {
         var cif: CallInfo = undefined;
 
-        var argTypes = try allocator.alloc([*c]clib.ffi_type, ffiArgTypes.len + 1);
+        var argTypes = try allocator.alloc([*c]clib.ffi_type, ffiArgTypes.len);
         errdefer allocator.free(argTypes);
 
         for (ffiArgTypes, 0..) |argType, i| argTypes[i] = switch (argType) {
             .ffiType => |ffiType| ffiType.toNative(),
             .structType => |structType| structType.toNative(),
         };
-
-        argTypes[ffiArgTypes.len] = null;
 
         const ret = clib.ffi_prep_cif(&cif, clib.FFI_DEFAULT_ABI, @intCast(ffiArgTypes.len), switch (ffiRetType) {
             .ffiType => |ffiType| ffiType.toNative(),
@@ -255,20 +253,32 @@ pub const CallableFunction = struct {
         };
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) ![]u8 {
-        if (callArgs.len != self.argTypes.len - 1) return PrepError.BadArgumentType;
-        const size = switch (self.returnType) {
-            .ffiType => |ffiType| ffiType.toSize(),
-            .structType => |structType| structType.structType.size,
-        };
-        const retValue = try self.allocator.alloc(u8, size);
-        defer if (size == 0) self.allocator.free(retValue);
-        clib.ffi_call(@ptrCast(&self.cif), @as(*const fn () callconv(.C) void, @alignCast(@ptrCast(self.fnPtr))), @ptrCast(retValue.ptr), @constCast(@ptrCast(callArgs.ptr)));
-        return retValue;
-    }
+    pub fn call(self: *CallableFunction, retValue: ?[]u8, callArgs: ?[]const *anyopaque) !void {
+        if (callArgs) |args| {
+            if (args.len != self.argTypes.len)
+                return PrepError.BadArgumentType;
+        } else if (self.argTypes.len != 0)
+            return PrepError.BadArgumentType;
+        const size = self.returnType.getSize();
+        if (size > 0) {
+            if (retValue == null)
+                return error.ReturnBufferMissing;
+            if (retValue.?.len < size)
+                return error.ReturnBufferTooSmall;
+        }
 
-    pub fn free(self: *CallableFunction, retValue: []u8) void {
-        self.allocator.free(retValue);
+        clib.ffi_call(
+            @ptrCast(&self.cif),
+            @as(*const fn () callconv(.C) void, @alignCast(@ptrCast(self.fnPtr))),
+            if (retValue) |buf|
+                @ptrCast(buf.ptr)
+            else
+                null,
+            if (callArgs) |args|
+                @constCast(@ptrCast(args.ptr))
+            else
+                null,
+        );
     }
 
     pub fn deinit(self: *CallableFunction) void {
@@ -303,7 +313,7 @@ pub const CallbackClosure = struct {
         var cif: CallInfo = undefined;
         var executableFn: ?*anyopaque = undefined;
 
-        var argTypes = try allocator.alloc([*c]clib.ffi_type, ffiArgTypes.len + 1);
+        var argTypes = try allocator.alloc([*c]clib.ffi_type, ffiArgTypes.len);
         errdefer allocator.free(argTypes);
 
         const closure = clib.ffi_closure_alloc(@sizeOf(clib.ffi_closure), @ptrCast(&executableFn)) orelse return ClosureError.AllocationFailed;
@@ -313,8 +323,6 @@ pub const CallbackClosure = struct {
             .ffiType => |ffiType| ffiType.toNative(),
             .structType => |structType| structType.toNative(),
         };
-
-        argTypes[ffiArgTypes.len] = null;
 
         const ret = clib.ffi_prep_cif(&cif, clib.FFI_DEFAULT_ABI, @intCast(ffiArgTypes.len), switch (ffiRetType) {
             .ffiType => |ffiType| ffiType.toNative(),

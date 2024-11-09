@@ -112,14 +112,14 @@ pub const GenType = union(enum) {
     ffiType: Type,
     structType: Struct,
 
-    pub fn getSize(self: GenType) usize {
+    pub inline fn getSize(self: GenType) usize {
         return switch (self) {
             .ffiType => |ffiType| ffiType.toSize(),
             .structType => |structType| structType.getSize(),
         };
     }
 
-    pub fn getAlignment(self: GenType) u16 {
+    pub inline fn getAlignment(self: GenType) u16 {
         return switch (self) {
             .ffiType => |ffiType| switch (ffiType) {
                 .void => @alignOf(void),
@@ -162,15 +162,11 @@ pub const CallableFunction = struct {
         @panic("FFI is unsupported on this platform");
     }
 
-    pub fn call(self: *CallableFunction, callArgs: []const *anyopaque) ![]u8 {
+    pub fn call(self: *CallableFunction, retValue: ?[]u8, callArgs: ?[]const *anyopaque) !void {
         _ = self;
         _ = callArgs;
-        @panic("FFI is unsupported on this platform");
-    }
-
-    pub fn free(self: *CallableFunction, retValue: []u8) void {
-        _ = self;
         _ = retValue;
+        @panic("FFI is unsupported on this platform");
     }
 
     pub fn deinit(self: *CallableFunction) void {

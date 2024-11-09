@@ -25,18 +25,19 @@ pub fn build(b: *std.Build) !void {
 
     var ffiSupported = false;
     // Credit to https://github.com/vezel-dev/graf/blob/ff694e720cece7b7386c85e2f9beea9e889b51b5/build.zig#L127
-    // TODO: https://github.com/ziglang/zig/issues/20361
-    if (!t.isDarwin() and switch (t.cpu.arch) {
+    if (switch (t.cpu.arch) {
         // libffi only supports MSVC for Windows on Arm.
-        .aarch64, .aarch64_be, .aarch64_32 => t.os.tag != .windows,
+        .aarch64 => t.os.tag != .windows,
+        // unable to test
+        .aarch64_be => false,
         // TODO: https://github.com/ziglang/zig/issues/10411
-        .arm, .armeb => t.getFloatAbi() != .soft and t.os.tag != .windows,
-        // TODO: https://github.com/llvm/llvm-project/issues/58377
-        .mips, .mipsel, .mips64, .mips64el => false,
-        // TODO: https://github.com/ziglang/zig/issues/20376
-        .powerpc, .powerpcle => !t.isGnuLibC(),
-        // TODO: https://github.com/ziglang/zig/issues/19107
-        .riscv32, .riscv64 => !t.isGnuLibC(),
+        .arm, .armeb => t.floatAbi() != .soft and t.os.tag != .windows,
+        // mips64: failing tests
+        // mips64el: failing tests
+        .mips64, .mips64el => false,
+        // powerpcle: compile error
+        // powerpc64: failing tests
+        .powerpcle, .powerpc64 => false,
         else => true,
     }) {
         const ffi_dep = b.dependency("libffi", .{
@@ -47,9 +48,8 @@ pub fn build(b: *std.Build) !void {
         lib.linkLibrary(bffiLib);
         ffiModule.addIncludePath(bffiLib.getEmittedIncludeTree());
         ffiSupported = true;
-    } else {
-        if (!safe_build) @panic("This device doesn't support ffi");
-    }
+    } else if (!safe_build)
+        @panic("This device doesn't support ffi");
 
     if (ffiSupported) {
         ffiModule.root_source_file = b.path("src/ffi.zig");
