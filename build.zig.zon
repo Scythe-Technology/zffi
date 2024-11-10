@@ -4,8 +4,8 @@
     .minimum_zig_version = "0.13.0",
     .dependencies = .{
         .libffi = .{
-            .url = "https://github.com/alexrp/libffi/archive/33fdb00f31f1add5ae7fc949f172c44e3dc58299.tar.gz",
-            .hash = "12205421a0b978582b831600bdaf2c49baa1fcedd081a7e75bce3c17503ac107b8d5",
+            .url = "https://github.com/vezel-dev/libffi/archive/13582b0d17d9b7ee640fa696e75761b03f410049.tar.gz",
+            .hash = "1220318c719baa9d67222a4dcf325c0d11482eacd49834b9e2c67a1e3f619d315bc0",
         },
     },
     .paths = .{
