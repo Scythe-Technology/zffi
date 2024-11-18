@@ -38,6 +38,8 @@ pub fn build(b: *std.Build) !void {
         // powerpcle: compile error
         // powerpc64: failing tests
         .powerpcle, .powerpc64 => false,
+        // bad pointer encoding for macOs x86_64
+        .x86_64 => t.os.tag != .macos,
         else => true,
     }) {
         const ffi_dep = b.dependency("libffi", .{
